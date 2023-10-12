@@ -29,3 +29,5 @@ Język: C++ 17
 >Graph_1, 5, 5
 (1,a-c),(2,a-b),(3,c-b),(4,c-e),(5,e-a),(d),;
 ```
+
+![plot](.graphVisualization.png)
