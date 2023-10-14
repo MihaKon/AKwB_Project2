@@ -30,4 +30,4 @@ Język: C++ 17
 (1,a-c),(2,a-b),(3,c-b),(4,c-e),(5,e-a),(d),;
 ```
 
-![plot](.graphVisualization.png)
+![](https://github.com/MihaKon/AKwB_Project2/blob/main/photos/graphVisualiztaion.png?raw=true)
