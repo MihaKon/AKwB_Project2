@@ -19,7 +19,7 @@ Język: C++ 17
 > <VERTEX_INDEX>, <JOINT_NAME> mogą być numeryczne lub literowe..
 
 ```
-><GRAPH_NAME>, <VERTEX_NUMBER>, <JOINTS_NUMBER>
+><GRAPH_NAME>,<VERTEX_NUMBER>,<JOINTS_NUMBER>
 (<JOINT_NAME>,<VERTEX_NAME>-<VERTEX_NAME>),(<VERTEX_NAME>),;
 ```
 
