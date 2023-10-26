@@ -2,10 +2,17 @@
 #include <fstream>
 #include <vector>
 
+struct Graph{
+	std::string name;
+	int numberOfVertexes;
+	int numberOfJoints;
+	std::vector<int> adjMatrix;
+}
+
 class GraphReader{
 private:
     std::string fileName;
-    std::vector<std::string> graphsVector;
+    std::vector<Graph> GraphsVector;
 public:
     GraphReader(std::string fileName){
         fileName = fileName;
@@ -30,8 +37,11 @@ public:
 			if (fileGraph.eof())
 				break;
         }
+        fileContent.getline();
     }
-    void convertToAdjMatrix();
+    void convertToAdjMatrix(){
+	
+    }
 };
 
 int main() {
