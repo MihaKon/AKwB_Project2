@@ -19,6 +19,7 @@ class GraphReader{
 private:
     std::string fileName;
     std::vector<Graph> graphs;
+    std::vector<Graph> convertedGraphs;
 public:
     GraphReader(std::string fileName){
         fileName = fileName;
@@ -44,10 +45,20 @@ public:
 				break;
         }
         fileContent.getline();
+        fileGraph.close();
     }
-    bool isCoupled(){}
-    bool isLIne() {}
-    void convertToCoupled() {}
+    void runForEeveryGraph() {
+        for (Graph graph : graphs) {
+            isCoupled(graph);
+            isLIne(graph);
+            convertToCoupled(Graph graph);
+        }
+    }
+    bool isCoupled(Graph graph){}
+    bool isLIne(Graph graph) {
+        return result;
+    }
+    void convertToCoupled(Graph graph) {}
     void writeFile(){
         std::string toFileName;
         std:: fstream fileGraph;
@@ -73,12 +84,17 @@ public:
             fileGraph << ";\n";
         }
         fileGraph.close();
-        
     }
 };
 
-int main() {
-    std::string name = "Test.txt";
+int main(int argc, char* argv[]) {
+    std::string name;
+    if(argc > 0 && argc < 2) {
+        name = argv[0];
+    } else( argv > 1) {
+        name = "Test.txt";
+        std::cout << "Cannot read argument, using default preset.File name: "<< name << std::endl;
+    }
     GraphReader test(name);
     return 0;
 }
