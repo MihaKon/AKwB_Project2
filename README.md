@@ -12,15 +12,15 @@ Język: C++ 17
 - <JOINT_NAME> - nazwa łuku,
 - <VERTEX_INDEX> - nazwa wierzchołka (index wierzchołka)
 - ; - koniec grafu
-- (<JOINT_NAME>,<VERTEX_NAME>-<VERTEX_NAME>), - łuk
-- (<VERTEX_NAME>), - wierzchołek bez łuków
+- (<JOINT_NAME>,<VERTEX_INDEX>-<VERTEX_INDEX>), - łuk, krawędź skierowana, "z - do" wierzchołka
+- (<VERTEX_INDEX>), - wierzchołek bez łuków
 
 > [!WARNING]  
 > <VERTEX_INDEX>, <JOINT_NAME> mogą być numeryczne lub literowe..
 
 ```
 ><GRAPH_NAME>,<VERTEX_NUMBER>,<JOINTS_NUMBER>
-(<JOINT_NAME>,<VERTEX_NAME>-<VERTEX_NAME>),(<VERTEX_NAME>),;
+(<JOINT_NAME>,<VERTEX_INDEX>-<VERTEX_INDEX>),(<VERTEX_INDEX>),;
 ```
 
 **Przykład:**
