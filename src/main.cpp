@@ -2,17 +2,23 @@
 #include <fstream>
 #include <vector>
 
+struct Joint {
+    std::string name;
+    int vFrom;
+    int vTo;
+}
+
 struct Graph{
 	std::string name;
 	int numberOfVertexes;
 	int numberOfJoints;
-	std::vector<int> adjMatrix;
+	std::vector<Joint> joints;
 }
 
 class GraphReader{
 private:
     std::string fileName;
-    std::vector<Graph> GraphsVector;
+    std::vector<Graph> graphs;
 public:
     GraphReader(std::string fileName){
         fileName = fileName;
@@ -39,8 +45,35 @@ public:
         }
         fileContent.getline();
     }
-    void convertToAdjMatrix(){
-	
+    bool isCoupled(){}
+    bool isLIne() {}
+    void convertToCoupled() {}
+    void writeFile(){
+        std::string toFileName;
+        std:: fstream fileGraph;
+        fileGraph.open(toFileName, std::ios::out);
+        if (!fileGraph) {
+            std::cout << "Cannot create/open " << toFileName << std::endl;
+            return
+        }
+        for (Graph graph : graphs) {
+            fileGraph << ">" << graph.name << ",";
+            fileGraph << graph.numberOfVertexes << "," << graph.numberOfJoints << "\n";
+            for (Joint joint : graph.joints) {
+                fileGraph << "(";
+                if(joint.name) {
+                    fileGraph << joint.name << ",";
+                }
+                fileGraph << joint.vFrom;
+                if(joint.vTo) {
+                    fileGraph << "-" << joint.vTo;
+                }
+                fileGraph << "),";
+            }
+            fileGraph << ";\n";
+        }
+        fileGraph.close();
+        
     }
 };
 
