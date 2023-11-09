@@ -96,5 +96,12 @@ int main(int argc, char* argv[]) {
         std::cout << "Cannot read argument, using default preset.File name: "<< name << std::endl;
     }
     GraphReader test(name);
+    std::cout << "Reading " << name << std::endl;
+    test.readFile();
+    std::cout << "Checking" << std::endl;
+    test.runForEeveryGraph();
+    std::cout << "Saving results" << std::endl;
+    test.writeFile();
+    std::cout << "END" << std::endl; 
     return 0;
 }
