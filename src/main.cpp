@@ -98,31 +98,8 @@ public:
         return predecessors;
     }
 
-    // void comparePredecessors(const Graph& graph) {
-    //     for (size_t vertex = 0; vertex < graph.numberOfVertexes; ++vertex) {
-    //         const std::vector<int>& neighbors = graph.adjList[vertex];
-
-    //         for (int neighbor : neighbors) {
-    //             // Find predecessors for both the vertex and its neighbor
-    //             std::vector<int> predecessorsVertex = findPredecessors(graph, vertex + 1);
-    //             std::vector<int> predecessorsNeighbor = findPredecessors(graph, neighbor);
-
-    //             // Compare predecessors and print the result
-    //             std::cout << "Comparing predecessors of " << vertex + 1 << " and " << neighbor << ": ";
-
-    //             if (predecessorsVertex == predecessorsNeighbor) {
-    //                 std::cout << "Same predecessors" << std::endl;
-    //             } else {
-    //                 std::cout << "Different predecessors" << std::endl;
-    //             }
-    //         }
-    //     }
-    // }
-
     bool isGraphLinear(Graph graph)
     {
-        // dla każdej pary wiuerzchołków wystarczy sprawdzic pierwszy sprawdz czy następnicy są tacy sami jężeli tak to sprawdz poprzedników
-        //  return false
         for (int i = 1; i < graph.numberOfVertexes; i++)
         {   
             for(int j=i-1;j<graph.numberOfVertexes; j++) {
