@@ -8,7 +8,7 @@
 struct Graph
 {
     std::string name;
-    int numberOfVertexes = 3;
+    int numberOfVertexes;
     int numberOfJoints;
     std::vector<std::vector<int>> adjList;
     bool isCoupled = false;
@@ -60,10 +60,12 @@ public:
         }
         fileGraph.close();
     }
-    bool checkCommon(std::vector<int> vectorOne, std::vector<int> vectorTwo)
+
+    bool checkCommon(const std::vector<int>& vectorOne, const std::vector<int>& vectorTwo)
     {
         return std::find_first_of(vectorOne.begin(), vectorOne.end(), vectorTwo.begin(), vectorTwo.end()) != vectorOne.end();
     }
+
     bool isGraphCoupled(Graph graph)
     {
         for (int i = 0; i < graph.numberOfVertexes; i++)
@@ -82,43 +84,73 @@ public:
         }
         return true;
     }
+
+    std::vector<int> findPredecessors(const Graph& graph, int targetVertex) {
+        std::vector<int> predecessors;
+
+        for (size_t vertex = 0; vertex < graph.numberOfVertexes; ++vertex) {
+            const std::vector<int>& neighbors = graph.adjList[vertex];
+            if (find(neighbors.begin(), neighbors.end(), targetVertex) != neighbors.end()) {
+                predecessors.push_back(vertex + 1);
+            }
+        }
+
+        return predecessors;
+    }
+
+    // void comparePredecessors(const Graph& graph) {
+    //     for (size_t vertex = 0; vertex < graph.numberOfVertexes; ++vertex) {
+    //         const std::vector<int>& neighbors = graph.adjList[vertex];
+
+    //         for (int neighbor : neighbors) {
+    //             // Find predecessors for both the vertex and its neighbor
+    //             std::vector<int> predecessorsVertex = findPredecessors(graph, vertex + 1);
+    //             std::vector<int> predecessorsNeighbor = findPredecessors(graph, neighbor);
+
+    //             // Compare predecessors and print the result
+    //             std::cout << "Comparing predecessors of " << vertex + 1 << " and " << neighbor << ": ";
+
+    //             if (predecessorsVertex == predecessorsNeighbor) {
+    //                 std::cout << "Same predecessors" << std::endl;
+    //             } else {
+    //                 std::cout << "Different predecessors" << std::endl;
+    //             }
+    //         }
+    //     }
+    // }
+
     bool isGraphLinear(Graph graph)
     {
-        for (int i = 0; i < graph.numberOfVertexes; i++)
-        {
-            const bool hasDuplicates = std::adjacent_find(graph.adjList[i].begin(), graph.adjList[i].end()) != graph.adjList[i].end();
-            if (hasDuplicates)
-                return false;
-            for (int j = i + 1; j < graph.numberOfVertexes; j++)
-            {
-                if (!graph.adjList[j].empty() && graph.adjList[i] != graph.adjList[j])
+        // dla każdej pary wiuerzchołków wystarczy sprawdzic pierwszy sprawdz czy następnicy są tacy sami jężeli tak to sprawdz poprzedników
+        //  return false
+        for (int i = 1; i < graph.numberOfVertexes; i++)
+        {   
+            for(int j=i-1;j<graph.numberOfVertexes; j++) {
+                if (graph.adjList[j].empty() || graph.adjList[i].empty()) {
+                    continue;
+                }
+                if (graph.adjList[j][0] != graph.adjList[i][0]) {
                     return false;
+                }
+                std::vector<int> predecessorsVertex = findPredecessors(graph, j);
+                std::vector<int> predecessorsNeighbor = findPredecessors(graph, i);
+                
+                if (predecessorsVertex != predecessorsNeighbor) {
+                    return false;
+                }
             }
         }
         return true;
     }
-    void convert(Graph graph)
+    void convert(const Graph& graph)
     {
         Graph convertedGraph;
-        for (int i = 0; i < graph.numberOfVertexes * 2; i++)
+        for (int i = 0; i < graph.numberOfVertexes*2; i++)
         {
-            if (i % 2 == 0 || i == 0)
-                convertedGraph.adjList.push_back(std::vector<int>{i + 1});
+            if(i % 2 == 0)
+                convertedGraph.adjList.push_back(std::vector<int> {i+1});
             else
-                convertedGraph.adjList.push_back(std::vector<int>{});
-        }
-        bool isOdd = true;
-        for (int i = 0; i < graph.numberOfVertexes; i++)
-        {
-            if (graph.adjList[i].empty())
-                continue;
-            for (int j = 0; j < graph.adjList[i].size(); j++)
-            {
-                int vertex = graph.adjList[i][j];
-                convertedGraph.adjList[vertex].push_back(vertex + 1);
-                convertedGraph.adjList[vertex + 1] = {};
-                convertedGraph.adjList.erase(convertedGraph.adjList.begin() + 2);
-            }
+                convertedGraph.adjList.push_back(std::vector<int> {});
         }
     }
     void writeFile()
@@ -164,10 +196,10 @@ int main(int argc, char *argv[])
     GraphReader test(name);
     std::cout << "Reading " << name << std::endl;
     test.readFile();
-    // std::cout << "Checking" << std::endl;
-    // test.runForEeveryGraph();
-    // // std::cout << "Saving results" << std::endl;
-    // // test.writeFile();
-    // std::cout << "END" << std::endl;
+    std::cout << "Checking" << std::endl;
+    test.runForEeveryGraph();
+    // std::cout << "Saving results" << std::endl;
+    // test.writeFile();
+    std::cout << "END" << std::endl;
     return 0;
 }
