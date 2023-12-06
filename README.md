@@ -11,7 +11,6 @@ Język: C++ 17
 - <JOINTS_NUMBER> - ilość łuków,
 - <VERTEX_INDEX> - nazwa wierzchołka (index wierzchołka)
 - (<VERTEX_INDEX>-<VERTEX_INDEX>), - łuk, krawędź skierowana, "z - do" wierzchołka
-- (<VERTEX_INDEX>), - wierzchołek bez łuków
 
 > [!WARNING]  
 > <VERTEX_INDEX> - może być reprezentowany jedynie liczbowo
