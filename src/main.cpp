@@ -91,7 +91,7 @@ std::vector<Graph> readFile(std::string filename)
             ss >> node2;
             ss >> c;
             ss >> c;
-            graph.adjList[node1 - 1].push_back(node2 - 1);
+            graph.adjList[node1].push_back(node2);
         }
         graphs.push_back(graph);
     }
@@ -108,9 +108,9 @@ private:
     std::vector<Graph> convertedGraphs;
 
 public:
-    std::vector<std::vector<int>>  sortAdjList(std::vector<std::vector<int>> adjList){
-        for (std::vector<int> joints : adjList){
-            std::sort(joints.begin(), joints.end());
+    std::vector<std::vector<int>>  sortAdjList(std::vector<std::vector<int>> adjList, int numberOfVertexes){
+        for (int i = 0; i < numberOfVertexes; i++){
+            std::sort(adjList[i].begin(), adjList[i].end());
         }
         return adjList;
     }
@@ -124,15 +124,15 @@ public:
     {
         for (int i = 0; i < graph.numberOfVertexes; i++)
         {
-            if (graph.adjList[i].empty())
-                continue;
             const bool hasDuplicates = std::adjacent_find(graph.adjList[i].begin(), graph.adjList[i].end()) != graph.adjList[i].end();
             if (hasDuplicates)
                 return false;
             for (int j = i + 1; j < graph.numberOfVertexes; j++)
             {
+                if(graph.adjList[i] == graph.adjList[j])
+                    continue;
                 bool common = checkCommon(graph.adjList[i], graph.adjList[j]);
-                if (common && !graph.adjList[j].empty() && graph.adjList[i] != graph.adjList[j])
+                if (common && !graph.adjList[j].empty())
                     return false;
             }
         }
@@ -157,6 +157,9 @@ public:
 
     bool isGraphLinear(Graph graph)
     {
+        // TODO: Change name
+        bool followers = true;
+        bool predecessors = false;
         for (int i = 1; i < graph.numberOfVertexes; i++)
         {
             for (int j = i - 1; j < graph.numberOfVertexes; j++)
@@ -167,15 +170,18 @@ public:
                 }
                 if (graph.adjList[j][0] != graph.adjList[i][0])
                 {
-                    return false;
+                    followers=false;
+                    continue;
                 }
                 std::vector<int> predecessorsVertex = findPredecessors(graph, j);
                 std::vector<int> predecessorsNeighbor = findPredecessors(graph, i);
 
-                if (predecessorsVertex != predecessorsNeighbor)
+                if (predecessorsVertex == predecessorsNeighbor)
                 {
-                    return false;
+                    predecessors = true;
                 }
+                if(predecessors && followers)
+                    return false;
             }
         }
         return true;
@@ -210,7 +216,7 @@ public:
     {
         Graph convertedGraph;
         convertedGraph.name = graph.name;
-        std::vector<int> removedVertecies;
+        std::vector<int> removedVertices;
         for (int i = 0; i < graph.numberOfVertexes * 2; i++)
         {
             if (i % 2 == 0)
@@ -229,7 +235,7 @@ public:
             {
                 int index = getCorrespondingIndex(i);
                 convertedGraph.adjList[index].push_back(getCorrespondingIndex(graph.adjList[i][j]));
-                removedVertecies.push_back(index);
+                removedVertices.push_back(index);
             }
         }
         convertedGraph.numberOfJoints = countJoints(convertedGraph.adjList);
@@ -237,12 +243,12 @@ public:
         convertedGraphs.push_back(convertedGraph);
     }
 
-    void runForEeveryGraph()
+    void runForEveryGraph()
     {
         std::cout << "Checking And Converting" << std::endl;
         for (Graph graph : graphs)
         {
-            graph.adjList = sortAdjList(graph.adjList);
+            graph.adjList = sortAdjList(graph.adjList, graph.numberOfVertexes);
             std::cout << graph.name << std::endl;
             graph.isCoupled = isGraphCoupled(graph);
             if (graph.isCoupled)
@@ -282,7 +288,7 @@ int main(int argc, char *argv[])
     GraphReader test;
     std::cout << "Reading " << name << std::endl;
     test.readfile(name);
-    test.runForEeveryGraph();
+    test.runForEveryGraph();
     test.writeResults(name);
     std::cout << "END" << std::endl;
     return 0;
