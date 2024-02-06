@@ -4,18 +4,17 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 struct Graph
 {
-    std::string name;
     int numberOfVertexes;
-    int numberOfJoints;
     std::vector<std::vector<int>> adjList;
     bool isCoupled = false;
     bool isLinear = false;
 };
 
-void writeFile(std::string fileName, const std::vector<Graph> graphs)
+void writeFile(const std::string &fileName, const Graph &graph)
 {
     std::string toFileName = "result_" + fileName;
     std::ofstream fileGraph;
@@ -26,270 +25,220 @@ void writeFile(std::string fileName, const std::vector<Graph> graphs)
         return;
     }
 
-    for (Graph graph : graphs)
-    {   
-        fileGraph << ">";
-        fileGraph << graph.name << ",";
-        fileGraph << graph.numberOfVertexes << "," << graph.numberOfJoints << "\n";
-        for (int i = 0; i < graph.adjList.size(); i++)
+    fileGraph << graph.adjList.size() << "\n";
+    for (int i = 0; i < graph.adjList.size(); i++)
+    {
+        fileGraph << i << ":";
+        for (int j = 0; j < graph.adjList[i].size(); j++)
         {
-            if (graph.adjList[i].empty()) continue;
-            for (int j = 0; j < graph.adjList[i].size(); j++)
-            {
-                fileGraph << "(" << i+1 << "-" << graph.adjList[i][j]+1 << "),";
-            }
+            fileGraph << " " << graph.adjList[i][j];
         }
         fileGraph << "\n";
     }
+    fileGraph << "\n";
     fileGraph.close();
 }
 
-std::vector<Graph> readFile(std::string filename)
+void readFile(const std::string &filename, Graph &graph)
 {
     std::ifstream file(filename);
+
     if (!file.is_open())
     {
-        std::cerr << "Error: Unable to open file " << filename << std::endl;
-        exit(EXIT_FAILURE);
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
     }
 
-    std::vector<Graph> graphs;
+    if (!(file >> graph.numberOfVertexes))
+    {
+        std::cerr << "Error reading the number of vertices from file." << std::endl;
+        return;
+    }
 
     std::string line;
     while (std::getline(file, line))
     {
-        Graph graph;
-        line.erase(std::remove(line.begin(), line.end(), '>'), line.end());
-
-        std::istringstream iss(line);
-
-        std::vector<std::string> result;
-
-        while (iss.good())
+        if (line.empty())
         {
-            std::string substring;
-            std::getline(iss, substring, ',');
-            result.push_back(substring);
+            continue;
         }
 
-        graph.name = result[0];
-        graph.numberOfVertexes = std::stoi(result[1]);
-        graph.numberOfJoints = std::stoi(result[2]);
+        std::stringstream ss(line);
+        std::vector<int> nums;
+        std::string temp;
+        int found;
 
-        graph.adjList.resize(graph.numberOfVertexes);
+        ss >> temp;
 
-        std::string edges;
-        std::getline(file, edges, '\n');
-        std::stringstream ss(edges);
-        int node1, node2;
-        char c;
-        for (int i = 0; i < graph.numberOfJoints; i++)
+        while (!ss.eof())
         {
-            ss >> c;
-            ss >> node1;
-            ss >> c;
-            ss >> node2;
-            ss >> c;
-            ss >> c;
-            graph.adjList[node1].push_back(node2);
+            ss >> temp;
+            if (std::stringstream(temp) >> found)
+                nums.push_back(found);
+            temp = "";
         }
-        graphs.push_back(graph);
+        graph.adjList.push_back(nums);
     }
 
     file.close();
-
-    return graphs;
 }
 
-class GraphReader
+std::vector<std::vector<int>> sortAdjList(std::vector<std::vector<int>> adjList, int numberOfVertexes)
 {
-private:
-    std::vector<Graph> graphs;
-    std::vector<Graph> convertedGraphs;
-
-public:
-    std::vector<std::vector<int>>  sortAdjList(std::vector<std::vector<int>> adjList, int numberOfVertexes){
-        for (int i = 0; i < numberOfVertexes; i++){
-            std::sort(adjList[i].begin(), adjList[i].end());
-        }
-        return adjList;
-    }
-
-    bool checkCommon(std::vector<int> vectorOne, std::vector<int> vectorTwo)
+    for (int i = 0; i < numberOfVertexes; i++)
     {
-        return std::find_first_of(vectorOne.begin(), vectorOne.end(), vectorTwo.begin(), vectorTwo.end()) != vectorOne.end();
+        std::sort(adjList[i].begin(), adjList[i].end());
     }
+    return adjList;
+}
 
-    bool isGraphCoupled(Graph graph)
+bool checkCommon(std::vector<int> &vectorOne, std::vector<int> &vectorTwo)
+{
+    return std::find_first_of(vectorOne.begin(), vectorOne.end(), vectorTwo.begin(), vectorTwo.end()) != vectorOne.end();
+}
+
+bool isGraphCoupled(Graph &graph)
+{
+    for (int i = 0; i < graph.numberOfVertexes; i++)
     {
-        for (int i = 0; i < graph.numberOfVertexes; i++)
+        const bool hasDuplicates = std::adjacent_find(graph.adjList[i].begin(), graph.adjList[i].end()) != graph.adjList[i].end();
+        if (hasDuplicates)
+            return false;
+        for (int j = i + 1; j < graph.numberOfVertexes; j++)
         {
-            const bool hasDuplicates = std::adjacent_find(graph.adjList[i].begin(), graph.adjList[i].end()) != graph.adjList[i].end();
-            if (hasDuplicates)
+            if (graph.adjList[i] == graph.adjList[j])
+                continue;
+            bool common = checkCommon(graph.adjList[i], graph.adjList[j]);
+            if (common && !graph.adjList[j].empty())
                 return false;
-            for (int j = i + 1; j < graph.numberOfVertexes; j++)
-            {
-                if(graph.adjList[i] == graph.adjList[j])
-                    continue;
-                bool common = checkCommon(graph.adjList[i], graph.adjList[j]);
-                if (common && !graph.adjList[j].empty())
-                    return false;
-            }
         }
-        return true;
     }
+    return true;
+}
 
-    std::vector<int> findPredecessors(Graph graph, int targetVertex)
+std::vector<int> findPredecessors(Graph &graph, int targetVertex)
+{
+    std::vector<int> predecessors;
+
+    for (int vertex = 0; vertex < graph.adjList.size(); vertex++)
     {
-        std::vector<int> predecessors;
-
-        for (int vertex = 0; vertex < graph.numberOfVertexes; vertex++)
+        std::vector<int> neighbors = graph.adjList[vertex];
+        if (find(neighbors.begin(), neighbors.end(), targetVertex) != neighbors.end())
         {
-            std::vector<int> neighbors = graph.adjList[vertex];
-            if (find(neighbors.begin(), neighbors.end(), targetVertex) != neighbors.end())
-            {
-                predecessors.push_back(vertex + 1);
-            }
+            predecessors.push_back(vertex + 1);
         }
-
-        return predecessors;
     }
 
-    bool isGraphLinear(Graph graph)
+    return predecessors;
+}
+
+bool isGraphLinear(Graph &graph)
+{
+    bool nexts = true;
+    bool prevs = false;
+    for (int i = 1; i < graph.numberOfVertexes; i++)
     {
-        // TODO: Change name
-        bool followers = true;
-        bool predecessors = false;
-        for (int i = 1; i < graph.numberOfVertexes; i++)
+        for (int j = i - 1; j < graph.numberOfVertexes; j++)
         {
-            for (int j = i - 1; j < graph.numberOfVertexes; j++)
-            {
-                if (graph.adjList[j].empty() || graph.adjList[i].empty())
-                {
-                    continue;
-                }
-                if (graph.adjList[j][0] != graph.adjList[i][0])
-                {
-                    followers=false;
-                    continue;
-                }
-                std::vector<int> predecessorsVertex = findPredecessors(graph, j);
-                std::vector<int> predecessorsNeighbor = findPredecessors(graph, i);
-
-                if (predecessorsVertex == predecessorsNeighbor)
-                {
-                    predecessors = true;
-                }
-                if(predecessors && followers)
-                    return false;
-            }
-        }
-        return true;
-    }
-
-    int getCorrespondingIndex(unsigned int index)
-    {
-        if (index == 0)
-        {
-            return index;
-        }
-        else if (index % 2 == 0)
-        {
-            return index + 2;
-        }
-        else
-        {
-            return index + 1;
-        }
-        throw std::invalid_argument("Index out of scope!");
-    }
-
-    int countJoints(std::vector<std::vector<int>> adjList){
-        int numberOfJoints = 0;
-        for (std::vector<int> joint : adjList){
-            numberOfJoints = numberOfJoints + joint.size();
-        }
-        return numberOfJoints;
-    }
-
-    void convert(Graph graph)
-    {
-        Graph convertedGraph;
-        convertedGraph.name = graph.name;
-        std::vector<int> removedVertices;
-        for (int i = 0; i < graph.numberOfVertexes * 2; i++)
-        {
-            if (i % 2 == 0)
-                convertedGraph.adjList.push_back(std::vector<int>{i + 1});
-            else
-                convertedGraph.adjList.push_back(std::vector<int>{});
-        }
-        for (int i = 0; i < graph.numberOfVertexes; i++)
-        {
-            if (graph.adjList[i].empty())
+            if (graph.adjList[j].empty() || graph.adjList[i].empty())
             {
                 continue;
             }
-            convertedGraph.adjList[i] = {};
-            for (int j = 0; j < graph.adjList[i].size(); j++)
+            if (graph.adjList[j][0] != graph.adjList[i][0])
             {
-                int index = getCorrespondingIndex(i);
-                convertedGraph.adjList[index].push_back(getCorrespondingIndex(graph.adjList[i][j]));
-                removedVertices.push_back(index);
+                nexts = false;
+                continue;
             }
+            std::vector<int> predecessorsVertex = findPredecessors(graph, j);
+            std::vector<int> predecessorsNeighbor = findPredecessors(graph, i);
+
+            if (predecessorsVertex == predecessorsNeighbor)
+            {
+                prevs = true;
+            }
+            if (prevs && nexts)
+                return false;
         }
-        convertedGraph.numberOfJoints = countJoints(convertedGraph.adjList);
-        convertedGraph.numberOfVertexes = convertedGraph.adjList.size();
-        convertedGraphs.push_back(convertedGraph);
+    }
+    return true;
+}
+
+int countBigger(int v, const std::set<int> &removedVertices)
+{
+    auto it = removedVertices.lower_bound(v);
+    int count = std::distance(removedVertices.begin(), it);
+
+    return count;
+}
+Graph convert(Graph graph)
+{
+    Graph convertedGraph;
+    std::set<int> removedVertices;
+    for (int i = 0; i < graph.adjList.size() * 2; i++)
+    {
+        if (i % 2 == 0)
+            convertedGraph.adjList.push_back(std::vector<int>{i + 1});
+        else
+            convertedGraph.adjList.push_back(std::vector<int>{});
+    }
+    for (int i = 0; i < graph.adjList.size(); i++)
+    {
+        if (graph.adjList[i].empty())
+        {
+            continue;
+        }
+        convertedGraph.adjList[i * 2] = {};
+        removedVertices.insert(i * 2 + 1);
+        for (int j = 0; j < graph.adjList[i].size(); j++)
+        {
+            convertedGraph.adjList[i * 2].push_back(graph.adjList[i][j] * 2);
+        }
     }
 
-    void runForEveryGraph()
+    for (int i = 0; i < convertedGraph.adjList.size(); i++)
     {
-        std::cout << "Checking And Converting" << std::endl;
-        for (Graph graph : graphs)
+        for (int j = 0; j < convertedGraph.adjList[i].size(); j++)
         {
-            graph.adjList = sortAdjList(graph.adjList, graph.numberOfVertexes);
-            std::cout << graph.name << std::endl;
-            graph.isCoupled = isGraphCoupled(graph);
-            if (graph.isCoupled)
-            {
-                std::cout << "Graph is coupled" << std::endl;
-                if (isGraphLinear(graph))
-                {
-                    graph.isLinear = true;
-                    std::cout << "Graph is Linear" << std::endl;
-                }
-                else
-                {
-                    std::cout << "Graph is not Linear" << std::endl;
-                }
-                convert(graph);
-            }
-            else
-            {
-                std::cout << "Graph is not coupled" << std::endl;
-            }
+            int value = convertedGraph.adjList[i][j];
+            convertedGraph.adjList[i][j] = value - countBigger(value, removedVertices);
         }
     }
-    void readfile(std::string filename)
+    int count = 0;
+    for (auto i : removedVertices)
     {
-        graphs = readFile(filename);
+        convertedGraph.adjList.erase(convertedGraph.adjList.begin() + (i - count));
+        count++;
     }
-    void writeResults(std::string filename)
-    {
-        std::cout << "Saving results" << std::endl;
-        writeFile(filename, convertedGraphs);
-    }
-};
+    convertedGraph.numberOfVertexes = convertedGraph.adjList.size();
+    return convertedGraph;
+}
 
 int main(int argc, char *argv[])
 {
     std::string name = "Test.txt";
-    GraphReader test;
+    Graph data, convertedGraph;
     std::cout << "Reading " << name << std::endl;
-    test.readfile(name);
-    test.runForEveryGraph();
-    test.writeResults(name);
+    readFile(name, data);
+    data.adjList = sortAdjList(data.adjList, data.numberOfVertexes);
+    data.isCoupled = isGraphCoupled(data);
+    if (data.isCoupled)
+    {
+        if (isGraphLinear(data))
+        {
+            data.isLinear = true;
+            std::cout << "Graph is coupled and Linear" << std::endl;
+        }
+        else
+        {
+            std::cout << "Graph is coupled, but not Linear" << std::endl;
+        }
+        convertedGraph = convert(data);
+    }
+    else
+    {
+        std::cout << "Graph is not coupled" << std::endl;
+    }
+    writeFile(name, convertedGraph);
     std::cout << "END" << std::endl;
     return 0;
 }
