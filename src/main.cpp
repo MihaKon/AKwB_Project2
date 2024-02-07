@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <unordered_set>
 #include <set>
 
 struct Graph
@@ -12,6 +13,24 @@ struct Graph
     std::vector<std::vector<int>> adjList;
     bool isCoupled = false;
     bool isLinear = false;
+};
+
+struct ConvertedGraph
+{
+    int index_vertex;
+    std::vector<int> adjList;
+
+    ConvertedGraph(int index, std::vector<int> adj) : index_vertex(index), adjList(adj){};
+    ConvertedGraph(){};
+};
+
+struct Vertex
+{
+    int entrance;
+    int exit;
+
+    Vertex(int ent, int ex) : entrance(ent), exit(ex){};
+    Vertex(){};
 };
 
 void writeFile(const std::string &fileName, const Graph &graph)
@@ -83,21 +102,29 @@ void readFile(const std::string &filename, Graph &graph)
     file.close();
 }
 
-std::vector<std::vector<int>> sortAdjList(std::vector<std::vector<int>> adjList, int numberOfVertexes)
+std::vector<std::vector<int>> sortAdjList(std::vector<std::vector<int>> adjList)
 {
-    for (int i = 0; i < numberOfVertexes; i++)
+    for (int i = 0; i < adjList.size(); i++)
     {
         std::sort(adjList[i].begin(), adjList[i].end());
     }
     return adjList;
 }
 
-bool checkCommon(std::vector<int> &vectorOne, std::vector<int> &vectorTwo)
+bool checkCommon(const std::vector<int> &vec1, const std::vector<int> &vec2)
 {
-    return std::find_first_of(vectorOne.begin(), vectorOne.end(), vectorTwo.begin(), vectorTwo.end()) != vectorOne.end();
+    std::unordered_set<int> set2(vec2.begin(), vec2.end());
+    for (int element : vec1)
+    {
+        if (set2.count(element) > 0)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
-bool isGraphCoupled(Graph &graph)
+bool isGraphCoupled(const Graph &graph)
 {
     for (int i = 0; i < graph.numberOfVertexes; i++)
     {
@@ -116,123 +143,154 @@ bool isGraphCoupled(Graph &graph)
     return true;
 }
 
-std::vector<int> findPredecessors(Graph &graph, int targetVertex)
+std::vector<std::vector<int>> getAdjMatrix(const Graph &graph)
 {
-    std::vector<int> predecessors;
-
-    for (int vertex = 0; vertex < graph.adjList.size(); vertex++)
+    std::vector<std::vector<int>> matrix(graph.adjList.size(), std::vector<int>(graph.adjList.size(), 0));
+    for (int i = 0; i < graph.adjList.size(); i++)
     {
-        std::vector<int> neighbors = graph.adjList[vertex];
-        if (find(neighbors.begin(), neighbors.end(), targetVertex) != neighbors.end())
+        for (int j = 0; j < graph.adjList[i].size(); j++)
         {
-            predecessors.push_back(vertex + 1);
+            matrix[i][graph.adjList[i][j]] = 1;
         }
     }
-
-    return predecessors;
+    return matrix;
 }
-
-bool isGraphLinear(Graph &graph)
+bool isGraphLinear(const Graph &graph)
 {
-    bool nexts = true;
-    bool prevs = false;
-    for (int i = 1; i < graph.numberOfVertexes; i++)
+    std::vector<std::vector<int>> matrix = getAdjMatrix(graph);
+    for (int i = 0; i < graph.adjList.size(); i++)
     {
-        for (int j = i - 1; j < graph.numberOfVertexes; j++)
+        for (int j = i + 1; j < graph.adjList.size(); j++)
         {
-            if (graph.adjList[j].empty() || graph.adjList[i].empty())
+            if (!checkCommon(graph.adjList[i], graph.adjList[j]))
             {
                 continue;
             }
-            if (graph.adjList[j][0] != graph.adjList[i][0])
+            if (graph.adjList[i] != graph.adjList[j])
             {
-                nexts = false;
-                continue;
-            }
-            std::vector<int> predecessorsVertex = findPredecessors(graph, j);
-            std::vector<int> predecessorsNeighbor = findPredecessors(graph, i);
-
-            if (predecessorsVertex == predecessorsNeighbor)
-            {
-                prevs = true;
-            }
-            if (prevs && nexts)
                 return false;
+            }
+            for (int index = 0; index < graph.adjList.size(); index++)
+            {
+                if (matrix[index][i] && matrix[index][i] == matrix[index][j])
+                {
+                    return false;
+                }
+            }
         }
     }
+
     return true;
 }
 
-int countBigger(int v, const std::set<int> &removedVertices)
-{
-    auto it = removedVertices.lower_bound(v);
-    int count = std::distance(removedVertices.begin(), it);
-
-    return count;
-}
 Graph convert(Graph graph)
 {
     Graph convertedGraph;
-    std::set<int> removedVertices;
-    for (int i = 0; i < graph.adjList.size() * 2; i++)
+    std::vector<ConvertedGraph> adjListH;
+    std::vector<Vertex> edges;
+
+    for (int i = 0; i < graph.adjList.size(); ++i)
     {
-        if (i % 2 == 0)
-            convertedGraph.adjList.push_back(std::vector<int>{i + 1});
-        else
-            convertedGraph.adjList.push_back(std::vector<int>{});
+        edges.push_back(Vertex(2 * i + 1, 2 * i));
     }
+
     for (int i = 0; i < graph.adjList.size(); i++)
     {
-        if (graph.adjList[i].empty())
+        for (int j = 0; j < graph.adjList.size(); j++)
         {
-            continue;
+            if (graph.adjList[j].empty() || graph.adjList[j].empty() || graph.adjList[i] != graph.adjList[j])
+            {
+                continue;
+            }
+            edges[j].entrance = edges[i].entrance;
         }
-        convertedGraph.adjList[i * 2] = {};
-        removedVertices.insert(i * 2 + 1);
         for (int j = 0; j < graph.adjList[i].size(); j++)
         {
-            convertedGraph.adjList[i * 2].push_back(graph.adjList[i][j] * 2);
+            edges[graph.adjList[i][j]].exit = edges[i].entrance;
         }
     }
 
-    for (int i = 0; i < convertedGraph.adjList.size(); i++)
+    for (int i = 0; i < edges.size(); i++)
     {
-        for (int j = 0; j < convertedGraph.adjList[i].size(); j++)
+        bool isEntrance(false), isExit(false);
+        int index;
+
+        for (int j = 0; j < adjListH.size(); j++)
         {
-            int value = convertedGraph.adjList[i][j];
-            convertedGraph.adjList[i][j] = value - countBigger(value, removedVertices);
+            if (adjListH[j].index_vertex == edges[i].exit)
+            {
+                index = j;
+                isExit = true;
+                break;
+            }
+        }
+
+        if (isExit)
+        {
+            adjListH[index].adjList.push_back(edges[i].entrance);
+        }
+        else
+        {
+            adjListH.push_back(ConvertedGraph(edges[i].exit, {edges[i].entrance}));
+        }
+
+        for (int j = 0; j < adjListH.size(); j++)
+        {
+            if (adjListH[j].index_vertex == edges[i].entrance)
+            {
+                isEntrance = true;
+                break;
+            }
+        }
+        if (!isEntrance)
+        {
+            adjListH.push_back(ConvertedGraph(edges[i].entrance, {}));
         }
     }
-    int count = 0;
-    for (auto i : removedVertices)
+
+    for (int i = 0; i < adjListH.size(); i++)
     {
-        convertedGraph.adjList.erase(convertedGraph.adjList.begin() + (i - count));
-        count++;
+        for (int j = 0; j < adjListH[i].adjList.size(); j++)
+        {
+            for (int k = 0; k < adjListH.size(); k++)
+            {
+                if (adjListH[k].index_vertex == adjListH[i].adjList[j])
+                {
+                    adjListH[i].adjList[j] = k;
+                    break;
+                }
+            }
+        }
     }
-    convertedGraph.numberOfVertexes = convertedGraph.adjList.size();
+
+    for (ConvertedGraph i : adjListH)
+    {
+        convertedGraph.adjList.push_back(i.adjList);
+    }
+
     return convertedGraph;
 }
 
 int main(int argc, char *argv[])
 {
     std::string name = "Test.txt";
-    Graph data, convertedGraph;
+    Graph originalGraph, convertedGraph;
     std::cout << "Reading " << name << std::endl;
-    readFile(name, data);
-    data.adjList = sortAdjList(data.adjList, data.numberOfVertexes);
-    data.isCoupled = isGraphCoupled(data);
-    if (data.isCoupled)
+    readFile(name, originalGraph);
+    originalGraph.adjList = sortAdjList(originalGraph.adjList);
+    originalGraph.isCoupled = isGraphCoupled(originalGraph);
+    if (originalGraph.isCoupled)
     {
-        if (isGraphLinear(data))
+        if (isGraphLinear(originalGraph))
         {
-            data.isLinear = true;
-            std::cout << "Graph is coupled and Linear" << std::endl;
+            originalGraph.isLinear = true;
+            std::cout << "Graph is coupled and linear" << std::endl;
         }
         else
         {
-            std::cout << "Graph is coupled, but not Linear" << std::endl;
+            std::cout << "Graph is coupled, but not linear" << std::endl;
         }
-        convertedGraph = convert(data);
+        convertedGraph = convert(originalGraph);
     }
     else
     {
