@@ -1,302 +1,178 @@
+#include <chrono>
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include <string>
-#include <sstream>
+#include <vector>
+#include <cmath>
+#include <string>
 #include <algorithm>
-#include <unordered_set>
-#include <set>
 
-struct Graph
+class Sequence
 {
-    int numberOfVertexes;
-    std::vector<std::vector<int>> adjList;
-    bool isCoupled = false;
-    bool isLinear = false;
-};
+private:
+    std::vector<int> inputData;
+    std::vector<bool> isInputChecked;
+    std::vector<int> resultMap;
+    bool isInputSizeCorrect;
 
-struct ConvertedGraph
-{
-    int index_vertex;
-    std::vector<int> adjList;
-
-    ConvertedGraph(int index, std::vector<int> adj) : index_vertex(index), adjList(adj){};
-    ConvertedGraph(){};
-};
-
-struct Vertex
-{
-    int entrance;
-    int exit;
-
-    Vertex(int ent, int ex) : entrance(ent), exit(ex){};
-    Vertex(){};
-};
-
-void writeFile(const std::string &fileName, const Graph &graph)
-{
-    std::string toFileName = "result_" + fileName;
-    std::ofstream fileGraph;
-    fileGraph.open(toFileName, std::ios::out);
-    if (!fileGraph)
+public:
+    Sequence(std::vector<int> input)
     {
-        std::cout << "Cannot create/open " << toFileName << std::endl;
-        return;
+        std::sort(input.begin(), input.end());
+        inputData = input;
+        isInputChecked = std::vector<bool>(input.size(), false);
     }
 
-    fileGraph << graph.adjList.size() << "\n";
-    for (int i = 0; i < graph.adjList.size(); i++)
-    {
-        fileGraph << i << ":";
-        for (int j = 0; j < graph.adjList[i].size(); j++)
+    bool checkInputSize()
+    { 
+        if (ceil((sqrt(1 + 8 * inputData.size()) - 3) / 2) != floor((sqrt(1 + 8 * inputData.size()) - 3) / 2))
         {
-            fileGraph << " " << graph.adjList[i][j];
+            isInputSizeCorrect = false;
+            return false;
         }
-        fileGraph << "\n";
-    }
-    fileGraph << "\n";
-    fileGraph.close();
-}
-
-void readFile(const std::string &filename, Graph &graph)
-{
-    std::ifstream file(filename);
-
-    if (!file.is_open())
-    {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return;
+        isInputSizeCorrect = true;
+        return true;
     }
 
-    if (!(file >> graph.numberOfVertexes))
+    void insertFirstMapValue()
     {
-        std::cerr << "Error reading the number of vertices from file." << std::endl;
-        return;
-    }
+        int value = inputData.rbegin()[0] - inputData.rbegin()[1];
 
-    std::string line;
-    while (std::getline(file, line))
-    {
-        if (line.empty())
+        resultMap.push_back(value);
+        for (int i = 0; i < inputData.size(); i++)
         {
-            continue;
+            if (inputData[i] != value)
+            {
+                continue;
+            }
+            isInputChecked[i] = true;
+            break;
         }
-
-        std::stringstream ss(line);
-        std::vector<int> nums;
-        std::string temp;
-        int found;
-
-        ss >> temp;
-
-        while (!ss.eof())
-        {
-            ss >> temp;
-            if (std::stringstream(temp) >> found)
-                nums.push_back(found);
-            temp = "";
-        }
-        graph.adjList.push_back(nums);
     }
 
-    file.close();
-}
-
-std::vector<std::vector<int>> sortAdjList(std::vector<std::vector<int>> adjList)
-{
-    for (int i = 0; i < adjList.size(); i++)
+    bool getResultMap()
     {
-        std::sort(adjList[i].begin(), adjList[i].end());
-    }
-    return adjList;
-}
-
-bool checkCommon(const std::vector<int> &vec1, const std::vector<int> &vec2)
-{
-    std::unordered_set<int> set2(vec2.begin(), vec2.end());
-    for (int element : vec1)
-    {
-        if (set2.count(element) > 0)
+        if (std::all_of(isInputChecked.begin(), isInputChecked.end(), [](bool v)
+                        { return v; }))
         {
             return true;
         }
-    }
-    return false;
-}
 
-bool isGraphCoupled(const Graph &graph)
-{
-    for (int i = 0; i < graph.numberOfVertexes; i++)
-    {
-        const bool hasDuplicates = std::adjacent_find(graph.adjList[i].begin(), graph.adjList[i].end()) != graph.adjList[i].end();
-        if (hasDuplicates)
-            return false;
-        for (int j = i + 1; j < graph.numberOfVertexes; j++)
-        {
-            if (graph.adjList[i] == graph.adjList[j])
-                continue;
-            bool common = checkCommon(graph.adjList[i], graph.adjList[j]);
-            if (common && !graph.adjList[j].empty())
-                return false;
-        }
-    }
-    return true;
-}
+        std::vector<int> positions;
 
-std::vector<std::vector<int>> getAdjMatrix(const Graph &graph)
-{
-    std::vector<std::vector<int>> matrix(graph.adjList.size(), std::vector<int>(graph.adjList.size(), 0));
-    for (int i = 0; i < graph.adjList.size(); i++)
-    {
-        for (int j = 0; j < graph.adjList[i].size(); j++)
+        for (int i = 0; i < inputData.size(); i++)
         {
-            matrix[i][graph.adjList[i][j]] = 1;
-        }
-    }
-    return matrix;
-}
-bool isGraphLinear(const Graph &graph)
-{
-    std::vector<std::vector<int>> matrix = getAdjMatrix(graph);
-    for (int i = 0; i < graph.adjList.size(); i++)
-    {
-        for (int j = i + 1; j < graph.adjList.size(); j++)
-        {
-            if (!checkCommon(graph.adjList[i], graph.adjList[j]))
+            if (isInputChecked[i])
             {
                 continue;
             }
-            if (graph.adjList[i] != graph.adjList[j])
+            resultMap.push_back(inputData[i]);
+            int sum = 0;
+            bool isValid = true;
+            for (int j = resultMap.size() - 1; j >= 0; j--)
             {
-                return false;
-            }
-            for (int index = 0; index < graph.adjList.size(); index++)
-            {
-                if (matrix[index][i] && matrix[index][i] == matrix[index][j])
+                sum += resultMap[j];
+                bool isFound = false;
+                for (int k = 0; k < inputData.size(); k++)
                 {
-                    return false;
+                    if (inputData[k] == sum && !isInputChecked[k])
+                    {
+                        isInputChecked[k] = true;
+                        positions.push_back(k);
+                        isFound = true;
+                        break;
+                    }
                 }
-            }
-        }
-    }
-
-    return true;
-}
-
-Graph convert(Graph graph)
-{
-    Graph convertedGraph;
-    std::vector<ConvertedGraph> adjListH;
-    std::vector<Vertex> edges;
-
-    for (int i = 0; i < graph.adjList.size(); ++i)
-    {
-        edges.push_back(Vertex(2 * i + 1, 2 * i));
-    }
-
-    for (int i = 0; i < graph.adjList.size(); i++)
-    {
-        for (int j = 0; j < graph.adjList.size(); j++)
-        {
-            if (graph.adjList[j].empty() || graph.adjList[j].empty() || graph.adjList[i] != graph.adjList[j])
-            {
-                continue;
-            }
-            edges[j].entrance = edges[i].entrance;
-        }
-        for (int j = 0; j < graph.adjList[i].size(); j++)
-        {
-            edges[graph.adjList[i][j]].exit = edges[i].entrance;
-        }
-    }
-
-    for (int i = 0; i < edges.size(); i++)
-    {
-        bool isEntrance(false), isExit(false);
-        int index;
-
-        for (int j = 0; j < adjListH.size(); j++)
-        {
-            if (adjListH[j].index_vertex == edges[i].exit)
-            {
-                index = j;
-                isExit = true;
-                break;
-            }
-        }
-
-        if (isExit)
-        {
-            adjListH[index].adjList.push_back(edges[i].entrance);
-        }
-        else
-        {
-            adjListH.push_back(ConvertedGraph(edges[i].exit, {edges[i].entrance}));
-        }
-
-        for (int j = 0; j < adjListH.size(); j++)
-        {
-            if (adjListH[j].index_vertex == edges[i].entrance)
-            {
-                isEntrance = true;
-                break;
-            }
-        }
-        if (!isEntrance)
-        {
-            adjListH.push_back(ConvertedGraph(edges[i].entrance, {}));
-        }
-    }
-
-    for (int i = 0; i < adjListH.size(); i++)
-    {
-        for (int j = 0; j < adjListH[i].adjList.size(); j++)
-        {
-            for (int k = 0; k < adjListH.size(); k++)
-            {
-                if (adjListH[k].index_vertex == adjListH[i].adjList[j])
+                if (!isFound)
                 {
-                    adjListH[i].adjList[j] = k;
+                    isValid = false;
                     break;
                 }
             }
+
+            if (isValid)
+            {
+                if (getResultMap())
+                {
+                    return true;
+                }
+            }
+
+            resultMap.pop_back();
+            for (int pos : positions)
+            {
+                isInputChecked[pos] = false;
+            }
         }
+        return false;
     }
 
-    for (ConvertedGraph i : adjListH)
+    void printResultMap()
     {
-        convertedGraph.adjList.push_back(i.adjList);
+        std::cout << "Result map: (";
+        for (int n : resultMap)
+        {
+            std::cout << n << ", ";
+        }
+        std::cout << "\b\b)\n";
     }
+};
 
-    return convertedGraph;
+std::vector<int> read_file(const std::string &file_name)
+{
+    std::string line;
+    std::vector<int> set;
+    std::ifstream file(file_name);
+
+    while (file >> line)
+    {
+        set.push_back(stoi(line));
+    }
+    file.close();
+
+    return set;
 }
 
 int main(int argc, char *argv[])
 {
-    std::string name = "Test.txt";
-    Graph originalGraph, convertedGraph;
-    std::cout << "Reading " << name << std::endl;
-    readFile(name, originalGraph);
-    originalGraph.adjList = sortAdjList(originalGraph.adjList);
-    originalGraph.isCoupled = isGraphCoupled(originalGraph);
-    if (originalGraph.isCoupled)
+    std::string file_name;
+    switch (argc)
     {
-        if (isGraphLinear(originalGraph))
-        {
-            originalGraph.isLinear = true;
-            std::cout << "Graph is coupled and linear" << std::endl;
-        }
-        else
-        {
-            std::cout << "Graph is coupled, but not linear" << std::endl;
-        }
-        convertedGraph = convert(originalGraph);
+    case 1:
+        std::cout << "Enter file name: ";
+        std::cin >> file_name;
+        break;
+    case 2:
+        file_name = argv[1];
+        break;
+    default:
+        std::cout << "No file name parsed!\n";
+        return 1;
     }
-    else
+
+    Sequence seq(read_file(file_name));
+
+    if (!seq.checkInputSize())
     {
-        std::cout << "Graph is not coupled" << std::endl;
+        std::cout << "Incorrect size of map!\n";
+        std::cout << "No solution";
+        return 1;
     }
-    writeFile(name, convertedGraph);
-    std::cout << "END" << std::endl;
+
+    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
+    seq.insertFirstMapValue();
+    bool is_map = seq.getResultMap();
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Time duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms\n";
+
+    if (!is_map)
+    {
+        std::cout << "No solution";
+        return 1;
+    }
+
+    seq.printResultMap();
+
     return 0;
 }
