@@ -1,178 +1,252 @@
-#include <chrono>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <string>
 #include <algorithm>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <utility>
+#include <string>
+#include <sstream>
 
-class Sequence
+const int SEQUENCE_MARGIN = 10;
+const bool PRINT_ALL = false;
+
+struct Node
 {
-private:
-    std::vector<int> inputData;
-    std::vector<bool> isInputChecked;
-    std::vector<int> resultMap;
-    bool isInputSizeCorrect;
-
-public:
-    Sequence(std::vector<int> input)
-    {
-        std::sort(input.begin(), input.end());
-        inputData = input;
-        isInputChecked = std::vector<bool>(input.size(), false);
-    }
-
-    bool checkInputSize()
-    { 
-        if (ceil((sqrt(1 + 8 * inputData.size()) - 3) / 2) != floor((sqrt(1 + 8 * inputData.size()) - 3) / 2))
-        {
-            isInputSizeCorrect = false;
-            return false;
-        }
-        isInputSizeCorrect = true;
-        return true;
-    }
-
-    void insertFirstMapValue()
-    {
-        int value = inputData.rbegin()[0] - inputData.rbegin()[1];
-
-        resultMap.push_back(value);
-        for (int i = 0; i < inputData.size(); i++)
-        {
-            if (inputData[i] != value)
-            {
-                continue;
-            }
-            isInputChecked[i] = true;
-            break;
-        }
-    }
-
-    bool getResultMap()
-    {
-        if (std::all_of(isInputChecked.begin(), isInputChecked.end(), [](bool v)
-                        { return v; }))
-        {
-            return true;
-        }
-
-        std::vector<int> positions;
-
-        for (int i = 0; i < inputData.size(); i++)
-        {
-            if (isInputChecked[i])
-            {
-                continue;
-            }
-            resultMap.push_back(inputData[i]);
-            int sum = 0;
-            bool isValid = true;
-            for (int j = resultMap.size() - 1; j >= 0; j--)
-            {
-                sum += resultMap[j];
-                bool isFound = false;
-                for (int k = 0; k < inputData.size(); k++)
-                {
-                    if (inputData[k] == sum && !isInputChecked[k])
-                    {
-                        isInputChecked[k] = true;
-                        positions.push_back(k);
-                        isFound = true;
-                        break;
-                    }
-                }
-                if (!isFound)
-                {
-                    isValid = false;
-                    break;
-                }
-            }
-
-            if (isValid)
-            {
-                if (getResultMap())
-                {
-                    return true;
-                }
-            }
-
-            resultMap.pop_back();
-            for (int pos : positions)
-            {
-                isInputChecked[pos] = false;
-            }
-        }
-        return false;
-    }
-
-    void printResultMap()
-    {
-        std::cout << "Result map: (";
-        for (int n : resultMap)
-        {
-            std::cout << n << ", ";
-        }
-        std::cout << "\b\b)\n";
-    }
+    std::string sub_sequence;
+    int seq_position;
+    std::vector<std::pair<int, int>> adjacency;
 };
 
-std::vector<int> read_file(const std::string &file_name)
+struct Sequence
 {
-    std::string line;
-    std::vector<int> set;
+    std::string original_sequence;
+    std::string modified_sequence = "";
+    std::vector<int> quality;
+    std::vector<int> correct_positions;
+    std::vector<int> incorrect_positions;
+    std::vector<Node> graph;
+};
+
+bool get_node_with_more_joints(const Node &n_one, const Node &n_two)
+{
+    return n_one.adjacency.size() > n_two.adjacency.size();
+}
+
+std::vector<Sequence> get_sequences(std::string file_name)
+{
+
     std::ifstream file(file_name);
+    Sequence currentSequence;
+    std::string line = "";
+    std::vector<Sequence> sequences;
 
-    while (file >> line)
+    while (std::getline(file, line))
     {
-        set.push_back(stoi(line));
+        if (line.empty())
+        {
+            continue;
+        }
+        if (line[0] == '>')
+        {
+            sequences.push_back(Sequence());
+            continue;
+        }
+        if (isdigit(line[0]))
+        {
+            std::istringstream iss(line);
+            int quality;
+            while (iss >> quality)
+            {
+                sequences.back().quality.push_back(quality);
+            }
+        }
+        else
+        {
+            sequences.back().original_sequence += line;
+        }
     }
-    file.close();
 
-    return set;
+    file.close();
+    return sequences;
+}
+
+Sequence remove_low_cred_nucleotides(Sequence seq, int min_credential_threshold)
+{
+    if (seq.original_sequence.length() != seq.quality.size())
+    {
+        std::cout << "ERROR: dlugosc sekwencji nie zgadza sie z dlugoscia jakosci\n";
+        exit(1);
+    }
+    for (int j = 0; j < seq.original_sequence.length(); j++)
+    {
+        if (seq.quality[j] < min_credential_threshold)
+        {
+            seq.incorrect_positions.push_back(j);
+            continue;
+        }
+        seq.modified_sequence += seq.original_sequence[j];
+        seq.correct_positions.push_back(j);
+    }
+    return seq;
+}
+
+std::vector<Node> get_nodes(Sequence seq, int substring_len)
+{
+    std::vector<Node> graph;
+    for (int j = 0; j < seq.modified_sequence.length() - substring_len; j++)
+    {
+        Node temp;
+        temp.sub_sequence = seq.modified_sequence.substr(j, substring_len);
+        temp.seq_position = seq.correct_positions[j];
+        graph.push_back(temp);
+    }
+    return graph;
+}
+
+int get_shortest_sequence_index(const std::vector<Sequence> &sequences)
+{
+    int index = 0, shortest_sequence_length = sequences[0].modified_sequence.length();
+
+    for (int i = 0; i < sequences.size(); i++)
+    {
+        if (sequences[i].modified_sequence.length() >= shortest_sequence_length)
+        {
+            continue;
+        }
+        shortest_sequence_length = sequences[i].modified_sequence.length();
+        index = i;
+    }
+
+    return index;
+}
+
+bool is_all_true(const std::vector<bool> &exist)
+{
+    for (int i = 0; i < exist.size(); i++)
+    {
+        if (!exist[i])
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 int main(int argc, char *argv[])
 {
-    std::string file_name;
+    std::string file_name = "";
+    int min_credibility_threshold = 0;
+    int substring_len = 0;
+
     switch (argc)
     {
     case 1:
-        std::cout << "Enter file name: ";
+        std::cout << "Podaj minimalny prog wiarygodnosci: ";
+        std::cin >> min_credibility_threshold;
+        std::cout << "Podaj minimalna dlugosc podciagu: ";
+        std::cin >> substring_len;
+        std::cout << "Podaj nazwę pliku:";
         std::cin >> file_name;
         break;
     case 2:
-        file_name = argv[1];
+        min_credibility_threshold = std::stoi(argv[1]);
+        std::cout << "Podaj minimalna dlugosc podciagu:  ";
+        std::cin >> substring_len;
+        std::cout << "Podaj nazwę pliku:";
+        std::cin >> file_name;
+        break;
+    case 3:
+        min_credibility_threshold = std::stoi(argv[1]);
+        substring_len = std::stoi(argv[2]);
+        std::cout << "Podaj nazwę pliku:";
+        std::cin >> file_name;
+        break;
+    case 4:
+        min_credibility_threshold = std::stoi(argv[1]);
+        substring_len = std::stoi(argv[2]);
+        file_name = argv[3];
         break;
     default:
-        std::cout << "No file name parsed!\n";
+        std::cout << "ERROR\n";
         return 1;
     }
 
-    Sequence seq(read_file(file_name));
+    std::vector<Sequence> sequences = get_sequences(file_name);
 
-    if (!seq.checkInputSize())
+    for (Sequence &seq : sequences)
     {
-        std::cout << "Incorrect size of map!\n";
-        std::cout << "No solution";
-        return 1;
+        seq = remove_low_cred_nucleotides(seq, min_credibility_threshold);
+        seq.graph = get_nodes(seq, substring_len);
     }
 
-    std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
-    seq.insertFirstMapValue();
-    bool is_map = seq.getResultMap();
-    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Time duration: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms\n";
-
-    if (!is_map)
+    for (int i = 0; i < sequences.size(); i++)
     {
-        std::cout << "No solution";
-        return 1;
+        for (int l = i + 1; l < sequences.size(); l++)
+        {
+            for (int j = 0; j < sequences[i].modified_sequence.length() - substring_len; j++)
+            {
+                int seq_start = std::max(0, j - SEQUENCE_MARGIN * substring_len);
+                int seq_end = sequences[l].graph.size();
+                seq_end = std::min(seq_end, j + SEQUENCE_MARGIN * substring_len);
+
+                for (int z = seq_start; z < seq_end; z++)
+                {
+                    if (sequences[i].graph[j].sub_sequence != sequences[l].graph[z].sub_sequence)
+                    {
+                        continue;
+                    }
+                    sequences[i].graph[j].adjacency.push_back(std::make_pair(l, z));
+                    sequences[l].graph[z].adjacency.push_back(std::make_pair(i, j));
+                }
+            }
+        }
     }
 
-    seq.printResultMap();
+    int shortest_seq_id = get_shortest_sequence_index(sequences);
+    std::sort(sequences[shortest_seq_id].graph.begin(), sequences[shortest_seq_id].graph.end(), get_node_with_more_joints);
+
+    for (int i = 0; i < sequences[shortest_seq_id].graph.size(); i++)
+    {
+        if (sequences[shortest_seq_id].graph[i].adjacency.size() < sequences.size()-1)
+        {
+            break;
+        }
+
+        std::vector<bool> exist(sequences.size(), false);
+        exist[shortest_seq_id] = 1;
+
+        for (int j = 0; j < sequences[shortest_seq_id].graph[i].adjacency.size(); j++)
+        {
+            exist[sequences[shortest_seq_id].graph[i].adjacency[j].first] = 1;
+        }
+        if (!is_all_true(exist))
+        {
+            continue;
+        }
+
+        std::cout << sequences[shortest_seq_id].graph[i].sub_sequence << "\n";
+        for (int j = 0; j < sequences.size(); ++j)
+        {
+            if (j == shortest_seq_id)
+            {
+                std::cout << "sekwencja nr " << j + 1 << " pozycja " << sequences[shortest_seq_id].graph[i].seq_position + 1 << "\n";
+            }
+            else
+            {
+                for (int l = 0; l < sequences[shortest_seq_id].graph[i].adjacency.size(); ++l)
+                {
+                    if (sequences[shortest_seq_id].graph[i].adjacency[l].first == j)
+                    {
+                        std::cout << "sekwencja nr " << j + 1 << " pozycja " << sequences[j].graph[sequences[shortest_seq_id].graph[i].adjacency[l].second].seq_position + 1 << "\n";
+                        break;
+                    }
+                }
+            }
+        }
+        if (!PRINT_ALL)
+        {
+            break;
+        }
+    }
 
     return 0;
 }
